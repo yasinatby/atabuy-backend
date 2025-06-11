@@ -1,0 +1,19 @@
+# Node modules
+node_modules/
+
+# Logs
+logs
+*.log
+
+# Env-Files (sensibel)
+.env
+
+# Build/Output
+build/
+coverage/
+
+# IDE/OS
+.DS_Store
+.vscode/
+# Backend-Env
+backend/.env
