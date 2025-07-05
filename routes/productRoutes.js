@@ -9,19 +9,15 @@ const {
   updateProduct,
 } = require('../controllers/productController');
 
-// GET  /api/products       → alle Produkte
-router.get('/', getProducts);
+const { protect, isAdmin } = require('../middleware/authMiddleware');
 
-// GET  /api/products/:id   → Produkt nach ID
+// Öffentlich zugänglich
+router.get('/', getProducts);
 router.get('/:id', getProductById);
 
-// POST /api/products       → neues Produkt anlegen
-router.post('/', addProduct);
-
-// PUT  /api/products/:id   → Produkt aktualisieren
-router.put('/:id', updateProduct);
-
-// DELETE /api/products/:id → Produkt löschen
-router.delete('/:id', deleteProduct);
+// Admin-Funktionen geschützt
+router.post('/', protect, isAdmin, addProduct);
+router.put('/:id', protect, isAdmin, updateProduct);
+router.delete('/:id', protect, isAdmin, deleteProduct);
 
 module.exports = router;

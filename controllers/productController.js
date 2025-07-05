@@ -1,4 +1,3 @@
-// backend/controllers/productController.js
 const Product = require('../models/Product');
 
 // GET /api/products
@@ -27,9 +26,14 @@ exports.getProductById = async (req, res) => {
 // POST /api/products
 exports.addProduct = async (req, res) => {
   try {
-    const { name, price, description, categories, image } = req.body;
-    if (!name || !price || !description) {
-      return res.status(400).json({ message: 'Name, Preis und Beschreibung sind erforderlich.' });
+    const { name, price, description, categories, image, stock } = req.body;
+
+    if (!name || !price || !description || stock === undefined) {
+      return res.status(400).json({ message: 'Name, Preis, Beschreibung und Lagerbestand sind erforderlich.' });
+    }
+
+    if (stock < 0) {
+      return res.status(400).json({ message: 'Lagerbestand darf nicht negativ sein.' });
     }
 
     const newProduct = new Product({
@@ -38,7 +42,9 @@ exports.addProduct = async (req, res) => {
       description,
       categories: categories || [],
       image: image || '',
+      stock,
     });
+
     const saved = await newProduct.save();
     res.status(201).json(saved);
   } catch (error) {
@@ -62,12 +68,18 @@ exports.deleteProduct = async (req, res) => {
 // PUT /api/products/:id
 exports.updateProduct = async (req, res) => {
   try {
-    const { name, price, description, categories, image } = req.body;
+    const { name, price, description, categories, image, stock } = req.body;
+
+    if (stock !== undefined && stock < 0) {
+      return res.status(400).json({ message: 'Lagerbestand darf nicht negativ sein.' });
+    }
+
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, price, description, categories, image },
+      { name, price, description, categories, image, stock },
       { new: true, runValidators: true }
     );
+
     if (!updated) return res.status(404).json({ message: 'Produkt nicht gefunden.' });
     res.json(updated);
   } catch (error) {

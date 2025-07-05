@@ -1,4 +1,3 @@
-// backend/controllers/orderController.js
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 
@@ -23,10 +22,21 @@ exports.createOrder = async (req, res) => {
       if (!prod) {
         return res.status(404).json({ message: `Produkt mit ID ${it.productId} nicht gefunden.` });
       }
+
       const quantity = parseInt(it.quantity, 10);
       if (quantity < 1) {
         return res.status(400).json({ message: 'Menge muss >= 1 sein.' });
       }
+
+      // Prüfe Lager
+      if (prod.stock < quantity) {
+        return res.status(400).json({ message: `Nicht genügend Lagerbestand für ${prod.name}.` });
+      }
+
+      // Lager reduzieren
+      prod.stock -= quantity;
+      await prod.save();
+
       total += prod.price * quantity;
       orderItems.push({
         product: prod._id,
@@ -41,6 +51,7 @@ exports.createOrder = async (req, res) => {
       total,
       customer,
     });
+
     const saved = await newOrder.save();
     res.status(201).json(saved);
   } catch (error) {
@@ -54,6 +65,13 @@ exports.getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('items.product', 'name price');
     if (!order) return res.status(404).json({ message: 'Bestellung nicht gefunden.' });
+
+    // Nur Admins oder Besteller dürfen die Bestellung sehen
+    const isOwner = order.customer?.email === req.user?.email;
+    if (!req.user?.isAdmin && !isOwner) {
+      return res.status(403).json({ message: 'Kein Zugriff auf diese Bestellung.' });
+    }
+
     res.json(order);
   } catch (error) {
     console.error(error);
@@ -61,10 +79,21 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-// GET /api/orders
+// GET /api/orders?status=Pending
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const statusFilter = req.query.status;
+    const allowedStatus = ['Pending', 'Processing', 'Shipped', 'Delivered'];
+    const query = {};
+
+    if (statusFilter) {
+      if (!allowedStatus.includes(statusFilter)) {
+        return res.status(400).json({ message: 'Ungültiger Bestellstatus für Filter.' });
+      }
+      query.status = statusFilter;
+    }
+
+    const orders = await Order.find(query).sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     console.error(error);
@@ -79,15 +108,42 @@ exports.updateOrderStatus = async (req, res) => {
     if (!['Pending', 'Processing', 'Shipped', 'Delivered'].includes(status)) {
       return res.status(400).json({ message: 'Ungültiger Bestellstatus.' });
     }
+
     const updated = await Order.findByIdAndUpdate(
       req.params.id,
       { status },
       { new: true }
     );
+
     if (!updated) return res.status(404).json({ message: 'Bestellung nicht gefunden.' });
+
     res.json(updated);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Serverfehler beim Aktualisieren des Bestellstatus.' });
+  }
+};
+
+// GET /api/orders/me?status=Pending
+exports.getMyOrders = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    const statusFilter = req.query.status;
+
+    const allowedStatus = ['Pending', 'Processing', 'Shipped', 'Delivered'];
+    const query = { 'customer.email': userEmail };
+
+    if (statusFilter) {
+      if (!allowedStatus.includes(statusFilter)) {
+        return res.status(400).json({ message: 'Ungültiger Bestellstatus für Filter.' });
+      }
+      query.status = statusFilter;
+    }
+
+    const myOrders = await Order.find(query).sort({ createdAt: -1 });
+    res.json(myOrders);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Serverfehler beim Abrufen deiner Bestellungen.' });
   }
 };

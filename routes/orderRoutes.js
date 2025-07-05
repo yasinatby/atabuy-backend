@@ -1,4 +1,3 @@
-// backend/routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -6,18 +5,22 @@ const {
   getOrderById,
   getAllOrders,
   updateOrderStatus,
+  getMyOrders,
 } = require('../controllers/orderController');
 
-// POST   /api/orders             → neue Bestellung anlegen
-router.post('/', createOrder);
+const { protect, isAdmin } = require('../middleware/authMiddleware');
 
-// GET    /api/orders            → alle Bestellungen abrufen
-router.get('/', getAllOrders);
+// Nur eingeloggte Nutzer dürfen Bestellungen aufgeben
+router.post('/', protect, createOrder);
 
-// GET    /api/orders/:id        → Bestellung nach ID
-router.get('/:id', getOrderById);
+// Eigene Bestellungen anzeigen
+router.get('/me', protect, getMyOrders);
 
-// PUT    /api/orders/:id/status → Bestellstatus updaten
-router.put('/:id/status', updateOrderStatus);
+// Nur Admins dürfen alle Bestellungen einsehen oder ändern
+router.get('/', protect, isAdmin, getAllOrders);
+router.put('/:id/status', protect, isAdmin, updateOrderStatus);
+
+// Einzelbestellung: Nur Admins oder Eigentümer
+router.get('/:id', protect, getOrderById);
 
 module.exports = router;

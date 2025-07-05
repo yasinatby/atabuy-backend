@@ -1,4 +1,3 @@
-// backend/models/Product.js
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema(
@@ -27,6 +26,11 @@ const productSchema = new mongoose.Schema(
     image: {
       type: String,
       default: '', // URL oder Base64-String
+    },
+    stock: {
+      type: Number,
+      required: true,
+      min: 0,
     },
   },
   { timestamps: true } // createdAt, updatedAt
