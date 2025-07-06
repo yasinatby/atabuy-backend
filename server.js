@@ -55,3 +55,7 @@ app.listen(PORT, () => {
 });
 const checkoutRoutes = require('./routes/checkoutRoutes');
 app.use('/api/checkout', checkoutRoutes);
+// In server.js (temporär hinzufügen zum Test)
+app.get('/api/test', (req, res) => {
+  res.send('✅ Backend läuft');
+});
